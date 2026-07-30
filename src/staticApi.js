@@ -93,13 +93,132 @@ async function handleOpinion(payload) {
   }
 }
 
+// 미리 구워둔 대상 목록 (안내·폴백용)
+export const PREPARED = {
+  companies: ['삼성전자', 'SK하이닉스', '카카오', 'NAVER', '현대자동차', 'LG전자'],
+  sectors: ['반도체', '2차전지', 'AI', '바이오텍', '자동차'],
+}
+
+// ── 산업 인텔리전스 ──────────────────────────────────────────
+async function handleIndustryAnalysis(payload) {
+  const name = (payload.industry || '').trim()
+  try {
+    return json(await loadJson(`industry/sector/${encodeURIComponent(name)}.json`))
+  } catch {
+    return json({ detail: `준비된 산업만 지원됩니다: ${PREPARED.sectors.join(', ')}` }, 503)
+  }
+}
+
+async function handleCompanyTrends(payload) {
+  const name = (payload.corp_name || '').trim()
+  try {
+    return json(await loadJson(`industry/company/${encodeURIComponent(name)}.json`))
+  } catch {
+    return json({ detail: `준비된 기업만 지원됩니다: ${PREPARED.companies.join(', ')}` }, 503)
+  }
+}
+
+// ── 매크로 ───────────────────────────────────────────────────
+async function handleMacro(kind) {
+  try {
+    return json(await loadJson(`macro/${kind}.json`))
+  } catch {
+    return json({ detail: '매크로 스냅샷이 준비되지 않았습니다.' }, 503)
+  }
+}
+
+// ── 인사이트 로그 (브라우저 localStorage) ────────────────────
+const LS_KEY = 'sv_insights'
+function lsRead() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') } catch { return [] }
+}
+function lsWrite(arr) {
+  localStorage.setItem(LS_KEY, JSON.stringify(arr))
+}
+function nowStamp() {
+  const d = new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function listInsights(search) {
+  const q = new URLSearchParams(search || '')
+  let items = lsRead()
+  const has = (v, s) => (v || '').toString().toLowerCase().includes(s.toLowerCase())
+  if (q.get('company')) items = items.filter((it) => has(it.company_name, q.get('company')))
+  if (q.get('sector')) items = items.filter((it) => has(it.sector, q.get('sector')))
+  if (q.get('tag')) items = items.filter((it) => has(it.tags, q.get('tag')))
+  if (q.get('impact')) items = items.filter((it) => it.impact_level === q.get('impact'))
+  if (q.get('date_from')) items = items.filter((it) => (it.created_at || '') >= q.get('date_from'))
+  if (q.get('date_to')) items = items.filter((it) => (it.created_at || '') <= q.get('date_to') + ' 99')
+  items.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+  return items
+}
+
+function createInsight(payload) {
+  const items = lsRead()
+  const item = {
+    ...payload,
+    id: Date.now(),
+    created_at: payload.created_at || nowStamp(),
+    author: payload.author || '사용자',
+    impact_level: payload.impact_level || 'Medium',
+  }
+  items.push(item)
+  lsWrite(items)
+  return item
+}
+
+function updateInsight(id, payload) {
+  const items = lsRead()
+  const idx = items.findIndex((it) => String(it.id) === String(id))
+  if (idx === -1) return null
+  items[idx] = { ...items[idx], ...payload, id: items[idx].id }
+  lsWrite(items)
+  return items[idx]
+}
+
+function deleteInsight(id) {
+  lsWrite(lsRead().filter((it) => String(it.id) !== String(id)))
+  return { ok: true }
+}
+
 // ── 라우팅 ───────────────────────────────────────────────────
-async function route(path, payload) {
+async function route(method, url, payload) {
+  const path = url.split('?')[0]
+  const search = url.includes('?') ? url.split('?')[1] : ''
+
+  // 재무
   if (path.endsWith('/api/search')) return handleSearch(payload)
   if (path.endsWith('/api/analyze-multi')) return handleAnalyzeMulti(payload)
   if (path.endsWith('/api/opinion')) return handleOpinion(payload)
-  // 정적 배포에서 미지원 기능(산업/매크로/딜/인사이트 저장 등)
-  return json({ detail: '이 기능은 정적 배포에서 준비 중입니다.', static: true }, 503)
+
+  // 산업 인텔리전스
+  if (path.endsWith('/api/industry-analysis')) return handleIndustryAnalysis(payload)
+  if (path.endsWith('/api/company-industry-trends')) return handleCompanyTrends(payload)
+
+  // 매크로
+  if (path.endsWith('/api/macro/indicators')) return handleMacro('indicators')
+  if (path.endsWith('/api/macro/analyze')) return handleMacro('analyze')
+  if (path.endsWith('/api/macro/news-brief')) return handleMacro('news-brief')
+
+  // 인사이트 로그 (localStorage)
+  const insightId = path.match(/\/api\/insights\/(.+)$/)
+  if (insightId) {
+    if (method === 'PUT') return json(updateInsight(insightId[1], payload))
+    if (method === 'DELETE') return json(deleteInsight(insightId[1]))
+    return json(lsRead().find((it) => String(it.id) === String(insightId[1])) || {}, 200)
+  }
+  if (path.endsWith('/api/insights')) {
+    if (method === 'POST') return json(createInsight(payload))
+    return json(listInsights(search))
+  }
+  if (path.endsWith('/api/backup/db')) {
+    return json({ ok: true, filename: '브라우저 localStorage', size_kb: 0, note: '정적 배포에서는 인사이트가 브라우저에 저장됩니다.' })
+  }
+
+  // 그 외(딜 시그널/레이더/메모 등) — 실시간 LLM 필요
+  return json({ detail: '이 기능은 정적 배포에서 준비 중입니다. (실시간 LLM 필요)', static: true }, 503)
 }
 
 export function installStaticApi() {
@@ -108,6 +227,7 @@ export function installStaticApi() {
   window.fetch = async (input, init = {}) => {
     const url = typeof input === 'string' ? input : (input && input.url) || ''
     if (url.includes('/api/')) {
+      const method = ((init && init.method) || 'GET').toUpperCase()
       let payload = {}
       try {
         if (init && init.body) payload = JSON.parse(init.body)
@@ -115,7 +235,7 @@ export function installStaticApi() {
         /* GET 등 */
       }
       try {
-        return await route(url, payload)
+        return await route(method, url, payload)
       } catch (e) {
         return json({ detail: String(e) }, 500)
       }

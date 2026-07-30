@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { API } from '../App.jsx'
+import { STATIC_MODE, PREPARED } from '../staticApi.js'
 import InsightModal from './InsightModal.jsx'
 import DealHighlightsSection from './DealHighlightsSection.jsx'
 
@@ -502,6 +503,12 @@ export default function IndustryIntelligencePanel() {
   return (
     <div className="min-h-screen bg-[#F0F2F5]">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {STATIC_MODE && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3 text-xs text-blue-700">
+            정적 데모: 미리 계산된 스냅샷으로 동작합니다. 준비된 산업 <b>{PREPARED.sectors.join(', ')}</b>,
+            기업 <b>{PREPARED.companies.join(', ')}</b> 중에서 입력하세요. (분석 범위는 국내 중심만 준비됨)
+          </div>
+        )}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
 
           {/* 모드 토글 */}

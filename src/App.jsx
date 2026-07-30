@@ -124,9 +124,9 @@ export default function App() {
           {/* 구분선 */}
           <div className="h-5 w-px bg-[#1E2D3D]" />
 
-          {/* 탭 네비게이션 (정적 배포에서는 재무 분석만 노출) */}
+          {/* 탭 네비게이션 */}
           <nav className="flex items-center gap-0.5">
-            {(STATIC_MODE ? NAV.filter(n => n.id === 'finance') : NAV).map(n => (
+            {NAV.map(n => (
               <button key={n.id} onClick={() => setPage(n.id)}
                 className="px-4 py-2 rounded text-xs font-semibold tracking-wide transition-all"
                 style={page === n.id

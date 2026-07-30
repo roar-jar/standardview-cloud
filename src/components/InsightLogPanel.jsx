@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { API } from '../App.jsx'
+import { STATIC_MODE } from '../staticApi.js'
 import InsightModal from './InsightModal.jsx'
 
 const IMPACT_STYLE = {
@@ -279,6 +280,11 @@ export default function InsightLogPanel() {
   }
 
   const handleBackup = async () => {
+    if (STATIC_MODE) {
+      setBackupMsg({ type: 'ok', text: `브라우저에 저장됨 (${items.length}개). 아래 MD/CSV/JSON으로 내보내 백업하세요.` })
+      setTimeout(() => setBackupMsg(null), 6000)
+      return
+    }
     setBackupMsg({ type: 'loading', text: 'DB 백업 중...' })
     try {
       const res = await fetch(`${API}/api/backup/db`, { method: 'POST' })
@@ -290,6 +296,13 @@ export default function InsightLogPanel() {
   }
 
   const handleExport = (fmt) => {
+    // 정적 배포: 브라우저에서 직접 파일 생성 (서버 없음)
+    if (STATIC_MODE) {
+      if (fmt === 'md') exportMarkdown(items)
+      else if (fmt === 'csv') exportCSV(items)
+      else exportJSON(items)
+      return
+    }
     window.location.href = `${API}/api/backup/export?format=${fmt}`
   }
 
