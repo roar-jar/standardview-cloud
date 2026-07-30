@@ -1,0 +1,11 @@
+{
+  // 정적 자산 전용 배포 설정.
+  // 이 파일이 있으면 wrangler 가 프레임워크(Vite) 자동구성을 건너뛰고,
+  // 빌드 산출물 dist/ 를 그대로 정적 자산으로 업로드한다. (서버/Worker 스크립트 없음)
+  "name": "standardview-cloud",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
