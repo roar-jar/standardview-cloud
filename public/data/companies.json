@@ -1,0 +1,32 @@
+[
+  {
+    "corp_name": "삼성전자",
+    "corp_code": "00126380",
+    "stock_code": "005930"
+  },
+  {
+    "corp_name": "SK하이닉스",
+    "corp_code": "00164779",
+    "stock_code": "000660"
+  },
+  {
+    "corp_name": "카카오",
+    "corp_code": "00258801",
+    "stock_code": "035720"
+  },
+  {
+    "corp_name": "NAVER",
+    "corp_code": "00266961",
+    "stock_code": "035420"
+  },
+  {
+    "corp_name": "현대자동차",
+    "corp_code": "00164742",
+    "stock_code": "005380"
+  },
+  {
+    "corp_name": "LG전자",
+    "corp_code": "00401731",
+    "stock_code": "066570"
+  }
+]

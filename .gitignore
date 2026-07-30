@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# 백엔드 관련 비밀은 이 저장소에 존재하지 않음(정적 배포)
+.env
+.venv/
+__pycache__/
